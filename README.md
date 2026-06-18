@@ -42,19 +42,19 @@ blibli-view2text/
 │   ├── server/                     # 后端服务
 │   │   ├── src/
 │   │   │   ├── env.ts             # 环境变量预加载（必须最先导入）
-│   │   │   ├── index.ts            # Express 入口 (端口 3001)
+│   │   │   ├── index.ts            # Express 入口 (端口 3001，兼托管前端)
 │   │   │   ├── routes/api.ts       # API 路由 (SSE + REST)
-│   │   │   ├── services/
-│   │   │   │   ├── model.ts             # 模型工厂（千问 + DashScope）
-│   │   │   │   ├── bilibili.ts          # B站字幕 API 封装
-│   │   │   │   ├── bilibili-download.ts # 视频下载 + 本地保存
-│   │   │   │   ├── ocr-subtitle.ts      # OCR 字幕提取 (tesseract.js)
-│   │   │   │   ├── llm-subtitle.ts      # 大模型字幕提取 (千问 VL)
-│   │   │   │   └── context-store.ts     # 生成上下文存储
-│   │   │   └── tools/                   # LangChain Tool 定义
+│   │   │   └── services/
+│   │   │       ├── model.ts             # 模型工厂（千问 + DashScope）
+│   │   │       ├── bilibili.ts          # B站字幕 API 封装
+│   │   │       ├── bilibili-download.ts # 视频下载 + 本地保存
+│   │   │       ├── ocr-subtitle.ts      # OCR 字幕提取 (tesseract.js)
+│   │   │       ├── llm-subtitle.ts      # 大模型字幕提取 (千问 VL)
+│   │   │       └── context-store.ts     # 生成上下文存储
 │   │   ├── downloads/              # 持久化产物（视频/字幕/文章）
 │   │   └── .env                    # 环境变量配置
 │   └── web/                        # 前端应用
+│       ├── dist/                   # 构建产物（生产部署用）
 │       └── src/
 │           ├── App.tsx             # 主组件
 │           ├── components/
@@ -109,25 +109,29 @@ PORT=3001
 
 ### 3. 启动服务
 
-**同时启动前后端（推荐）：**
+**本地开发（前后端热重载）：**
 
 ```bash
 npm run dev
 ```
 
-**或分别启动：**
+访问 `http://localhost:5173`（前端 Vite 开发服务器，自动代理 API 到 3001）。
+
+**生产部署（推荐）：**
 
 ```bash
-# 终端 1 — 后端 (http://localhost:3001)
-npm run dev:server
+# 构建前端
+npm run build
 
-# 终端 2 — 前端 (http://localhost:5173)
-npm run dev:web
+# 启动服务（Express 同时托管前端静态文件和 API）
+npm start
 ```
+
+访问 `http://localhost:3001`（单端口，Express 同时提供 API 和前端页面）。
 
 ### 4. 使用
 
-1. 打开浏览器访问 `http://localhost:5173`
+1. 打开浏览器访问 `http://localhost:3001`（生产）或 `http://localhost:5173`（开发）
 2. 选择字幕提取方式：
    - **API 提取** — 最快，部分视频需填写 Cookie
    - **OCR 提取** — 免费离线，耗时较长
@@ -267,23 +271,28 @@ event: error           → { message }                错误
 
 ## 云端部署
 
-项目支持打包到服务器后解压即用（零网络依赖）：
+项目采用**前端预构建 + Express 单端口托管**方案，部署简单：
 
 ```bash
-# 本机打包（含 node_modules）
+# 1. 本机构建前端
+npm run build
+
+# 2. 打包（含 node_modules + 前端 dist）
 tar --exclude='.git' --exclude='downloads' -czf app.tar.gz .
 
-# 上传到服务器
+# 3. 上传到服务器
 scp app.tar.gz user@your-server:/home/admin/
 
-# 服务器上解压并启动
+# 4. 服务器上解压并启动
 mkdir -p /home/admin/blibli-view2text
 cd /home/admin/blibli-view2text
 tar -xzf ../app.tar.gz
-npm run dev
+nohup npm start > app.log 2>&1 &
 ```
 
-> 注意：需确保服务器防火墙放行 5173（前端）和 3001（后端）端口。
+> 只需开放 **3001** 端口。Express 同时提供 API 接口和前端页面，无需 Vite/Nginx。
+>
+> 如需 OCR/大模型字幕提取，服务器须安装 `ffmpeg`。
 
 ---
 

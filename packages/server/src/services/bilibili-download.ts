@@ -15,8 +15,6 @@ export interface DownloadResult {
   filePath: string;
   title: string;
   bvid: string;
-  /** 保存到本地 downloads 目录的路径 */
-  savedPath: string | null;
   cleanup: () => void;
 }
 
@@ -101,7 +99,8 @@ async function saveVideo(tmpPath: string, title: string, bvid: string): Promise<
 }
 
 /**
- * 完整流程：下载 B站视频到本地临时文件，并保存到 downloads 目录
+ * 完整流程：下载 B站视频到本地临时文件
+ * 注意：不再在下载时就复制到 downloads/，避免触发 tsx watch 重启
  */
 export async function downloadBilibiliVideo(
   videoUrl: string,
@@ -121,20 +120,10 @@ export async function downloadBilibiliVideo(
 
   await downloadStream(playUrl, filePath);
 
-  // 保存到 downloads 目录（异步复制，不阻塞事件循环）
-  let savedPath: string | null = null;
-  try {
-    savedPath = await saveVideo(filePath, title, bvid);
-    console.log(`视频已保存: ${savedPath}`);
-  } catch (e) {
-    console.warn(`视频保存失败:`, e);
-  }
-
   return {
     filePath,
     title,
     bvid,
-    savedPath,
     cleanup: () => {
       try {
         fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -143,4 +132,22 @@ export async function downloadBilibiliVideo(
       }
     },
   };
+}
+
+/**
+ * 保存视频到 downloads 目录（应在 SSE 响应结束后调用）
+ */
+export async function saveVideoToDownloads(tmpPath: string, title: string, bvid: string): Promise<string | null> {
+  try {
+    const downloadsDir = getDownloadsDir();
+    const safeName = title.replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
+    const fileName = `${safeName}_${bvid}.mp4`;
+    const destPath = path.join(downloadsDir, fileName);
+    await copyFile(tmpPath, destPath);
+    console.log(`视频已保存: ${destPath}`);
+    return destPath;
+  } catch (e) {
+    console.warn(`视频保存失败:`, e);
+    return null;
+  }
 }

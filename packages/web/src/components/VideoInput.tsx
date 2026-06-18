@@ -82,7 +82,7 @@ export function VideoInput({ onSubmit, isLoading }: VideoInputProps) {
           <div className="method-content">
             <div className="method-title">大模型提取</div>
             <div className="method-desc">
-              下载视频后通过 Gemini Vision 识别字幕，准确率最高。消耗 API 额度。
+              下载视频后通过通义千问 VL 识别字幕，准确率最高。消耗 API 额度。
             </div>
           </div>
         </label>

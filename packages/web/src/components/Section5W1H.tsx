@@ -20,7 +20,12 @@ interface Section5W1HProps {
   sectionTitle: string;
 }
 
-const API_BASE = "";
+const API_BASE = (() => {
+  if (typeof window !== 'undefined' && window.location.port === '5173') {
+    return `${window.location.protocol}//${window.location.hostname}:3001`;
+  }
+  return '';
+})();
 
 const LABELS: Record<keyof Summary5W1H, string> = {
   who: "Who",

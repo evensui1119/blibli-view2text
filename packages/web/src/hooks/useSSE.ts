@@ -27,7 +27,13 @@ interface UseSSEReturn {
   reset: () => void;
 }
 
-const API_BASE = "";
+const API_BASE = (() => {
+  // 开发模式下直连后端端口，绕过 Vite 代理（避免 SSE 长连接被代理层断开）
+  if (typeof window !== 'undefined' && window.location.port === '5173') {
+    return `${window.location.protocol}//${window.location.hostname}:3001`;
+  }
+  return '';
+})();
 
 export function useSSE(): UseSSEReturn {
   const [content, setContent] = useState("");

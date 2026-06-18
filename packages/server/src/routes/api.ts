@@ -7,7 +7,7 @@ import { Router, Request, Response } from "express";
 import fs from "node:fs";
 import path from "node:path";
 import { extractSubtitle } from "../services/bilibili.js";
-import { downloadBilibiliVideo } from "../services/bilibili-download.js";
+import { downloadBilibiliVideo, saveVideoToDownloads } from "../services/bilibili-download.js";
 import { ocrExtractSubtitle } from "../services/ocr-subtitle.js";
 import { llmExtractSubtitle } from "../services/llm-subtitle.js";
 import { contextStore } from "../services/context-store.js";
@@ -74,6 +74,7 @@ apiRouter.post("/generate", async (req: Request, res: Response) => {
     // Step 1: 提取字幕
     let subtitleText: string;
     let videoTitle: string;
+    let pendingSave: { videoTmpPath: string; title: string; bvid: string; cleanup: () => void } | null = null;
 
     if (extractMethod === "ocr" || extractMethod === "llm") {
       // OCR / LLM 模式：下载视频 → 抽帧 → 识别
@@ -110,10 +111,17 @@ apiRouter.post("/generate", async (req: Request, res: Response) => {
         sendEvent("error", { message: `${modeLabel}字幕提取失败: ${error.message}` });
         clearInterval(heartbeat);
         res.end();
-        return;
-      } finally {
         downloadResult.cleanup();
+        return;
       }
+
+      // 记录下载信息，延迟到 SSE 结束后再保存（避免触发 tsx watch 重启）
+      pendingSave = {
+        videoTmpPath: downloadResult.filePath,
+        title: downloadResult.title,
+        bvid: downloadResult.bvid,
+        cleanup: downloadResult.cleanup,
+      };
     } else {
       // API 模式：直接调用 B站字幕接口
       sendEvent("status", { stage: "extracting", message: "正在通过 API 提取字幕..." });
@@ -134,21 +142,7 @@ apiRouter.post("/generate", async (req: Request, res: Response) => {
       }
     }
 
-    // Step 2: 保存字幕到本地文件（异步写入，不阻塞事件循环）
-    try {
-      const downloadsDir = path.resolve(process.cwd(), "downloads");
-      if (!fs.existsSync(downloadsDir)) {
-        fs.mkdirSync(downloadsDir, { recursive: true });
-      }
-      const safeName = (videoTitle || "untitled").replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
-      const subtitlePath = path.join(downloadsDir, `${safeName}.txt`);
-      await fs.promises.writeFile(subtitlePath, subtitleText, "utf-8");
-      console.log(`字幕已保存: ${subtitlePath}`);
-    } catch (e) {
-      console.warn("字幕保存失败:", e);
-    }
-
-    // Step 3: 流式展示字幕给前端
+    // Step 2: 流式展示字幕给前端
     sendEvent("subtitle_start", { title: videoTitle });
     await flush();
     const subtitleLines = subtitleText.split("\n");
@@ -231,20 +225,7 @@ ${subtitleText}
     contextStore.updateArticle(taskId, fullArticle);
     const ctx = contextStore.get(taskId);
 
-    // 保存生成的文章到 downloads 目录
-    try {
-      const downloadsDir = path.resolve(process.cwd(), "downloads");
-      if (!fs.existsSync(downloadsDir)) {
-        fs.mkdirSync(downloadsDir, { recursive: true });
-      }
-      const safeName = (videoTitle || "untitled").replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
-      const articlePath = path.join(downloadsDir, `${safeName}_文章.md`);
-      await fs.promises.writeFile(articlePath, fullArticle, "utf-8");
-      console.log(`文章已保存: ${articlePath}`);
-    } catch (e) {
-      console.warn("文章保存失败:", e);
-    }
-
+    // 保存生成的文章到 downloads 目录（延迟到 SSE 结束后）
     sendEvent("complete", {
       taskId,
       sections: ctx?.sections.map((s, i) => ({ index: i, title: s.title })) || [],
@@ -252,6 +233,30 @@ ${subtitleText}
 
     clearInterval(heartbeat);
     res.end();
+
+    // === SSE 已结束，以下操作即使触发 tsx watch 重启也不影响客户端 ===
+    try {
+      const downloadsDir = path.resolve(process.cwd(), "downloads");
+      if (!fs.existsSync(downloadsDir)) {
+        fs.mkdirSync(downloadsDir, { recursive: true });
+      }
+      const safeName = (videoTitle || "untitled").replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
+
+      // 保存字幕
+      await fs.promises.writeFile(path.join(downloadsDir, `${safeName}.txt`), subtitleText, "utf-8");
+      // 保存文章
+      await fs.promises.writeFile(path.join(downloadsDir, `${safeName}_文章.md`), fullArticle, "utf-8");
+      // 保存视频
+      if (pendingSave) {
+        await saveVideoToDownloads(pendingSave.videoTmpPath, pendingSave.title, pendingSave.bvid);
+        pendingSave.cleanup();
+      }
+      console.log(`产物已保存到: ${downloadsDir}`);
+    } catch (e) {
+      console.warn("产物保存失败:", e);
+      if (pendingSave) pendingSave.cleanup();
+    }
+    return;
   } catch (error: any) {
     sendEvent("error", { message: error.message || "生成失败" });
     clearInterval(heartbeat);

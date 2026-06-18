@@ -7,10 +7,11 @@
   "scripts": {
     "dev:server": "npm run dev --workspace=packages/server",
     "dev:web": "npm run dev --workspace=packages/web",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\""
+    "dev": "npm run dev:server & npm run dev:web",
+    "build": "npm run build --workspace=packages/web",
+    "start": "npm run dev:server"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
     "typescript": "^5.7.0"
   },
   "dependencies": {
