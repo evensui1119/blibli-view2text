@@ -7,8 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import ffmpeg from "fluent-ffmpeg";
-// @ts-ignore: ffmpeg-static 导出 ffmpeg 二进制路径
-import ffmpegPath from "ffmpeg-static";
+// 使用系统安装的 ffmpeg（macOS: brew install ffmpeg，Linux: apt/apk install ffmpeg）
+const ffmpegPath = "ffmpeg";
 import Tesseract from "tesseract.js";
 
 // 设置 ffmpeg 路径

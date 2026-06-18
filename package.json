@@ -1,7 +1,9 @@
 {
   "name": "blibli-view2text",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev:server": "npm run dev --workspace=packages/server",
     "dev:web": "npm run dev --workspace=packages/web",
@@ -10,5 +12,9 @@
   "devDependencies": {
     "concurrently": "^9.1.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@esbuild/linux-x64": "^0.28.1",
+    "@rolldown/binding-linux-x64-gnu": "^1.1.1"
   }
 }

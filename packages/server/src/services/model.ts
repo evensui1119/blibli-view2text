@@ -7,12 +7,6 @@ import { ChatOpenAI } from "@langchain/openai";
 
 const DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
-// ChatOpenAI 底层依赖 OPENAI_API_KEY 环境变量，
-// 这里将 DASHSCOPE_API_KEY 桥接过去
-if (process.env.DASHSCOPE_API_KEY && !process.env.OPENAI_API_KEY) {
-  process.env.OPENAI_API_KEY = process.env.DASHSCOPE_API_KEY;
-}
-
 interface ModelOptions {
   temperature?: number;
   maxOutputTokens?: number;

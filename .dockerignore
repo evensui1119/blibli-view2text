@@ -1,9 +1,0 @@
-node_modules
-dist
-.git
-.gitignore
-*.md
-.env.example
-packages/server/downloads
-packages/web/node_modules
-packages/server/node_modules
