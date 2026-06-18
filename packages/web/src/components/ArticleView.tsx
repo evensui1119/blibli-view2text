@@ -3,7 +3,6 @@
  * 使用 react-markdown 渲染 Markdown 内容，支持章节级 5W1H 按钮
  */
 
-import { useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Section5W1H } from "./Section5W1H";

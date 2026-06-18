@@ -20,7 +20,7 @@ interface Section5W1HProps {
   sectionTitle: string;
 }
 
-const API_BASE = "http://localhost:3001";
+const API_BASE = "";
 
 const LABELS: Record<keyof Summary5W1H, string> = {
   who: "Who",

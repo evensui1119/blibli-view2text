@@ -6,7 +6,11 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import { apiRouter } from "./routes/api.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +33,13 @@ app.use("/api", apiRouter);
 // 健康检查
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "blibli-view2text" });
+});
+
+// 生产环境：托管前端静态文件
+const webDist = path.join(__dirname, "../../web/dist");
+app.use(express.static(webDist));
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(webDist, "index.html"));
 });
 
 // 启动服务

@@ -152,6 +152,7 @@ apiRouter.post("/generate", async (req, res) => {
         await flush();
         // Step 3: 生成文章（流式）
         sendEvent("status", { stage: "generating", message: "正在生成文章..." });
+        await flush();
         const taskId = uuidv4();
         // 初始化上下文存储
         contextStore.set(taskId, {
@@ -163,6 +164,7 @@ apiRouter.post("/generate", async (req, res) => {
             createdAt: new Date(),
         });
         sendEvent("taskId", { taskId });
+        await flush();
         // 构造 prompt
         let requirementSection = "";
         if (userRequirement) {
@@ -200,6 +202,7 @@ ${subtitleText}
                 sendEvent("token", { content });
             }
         }
+        await flush();
         // 存储完整文章和解析章节
         contextStore.updateArticle(taskId, fullArticle);
         const ctx = contextStore.get(taskId);

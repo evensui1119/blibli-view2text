@@ -27,7 +27,7 @@ interface UseSSEReturn {
   reset: () => void;
 }
 
-const API_BASE = "http://localhost:3001";
+const API_BASE = "";
 
 export function useSSE(): UseSSEReturn {
   const [content, setContent] = useState("");
