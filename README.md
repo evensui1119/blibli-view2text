@@ -27,7 +27,7 @@ B站视频字幕转结构化中文对话文章，基于 **LangChain** + **通义
 | LLM | 通义千问 qwen-plus（文章生成） / qwen-vl-max（Vision 字幕识别） |
 | API 接口 | DashScope OpenAI 兼容接口 |
 | OCR | tesseract.js（中文 chi_sim） |
-| 视频处理 | fluent-ffmpeg + ffmpeg-static |
+| 视频处理 | fluent-ffmpeg + 系统 ffmpeg |
 | 后端 | Express.js + TypeScript (ESM) |
 | 前端 | React 19 + Vite 8 |
 | 流式通信 | Server-Sent Events (SSE) |
@@ -41,6 +41,7 @@ blibli-view2text/
 ├── packages/
 │   ├── server/                     # 后端服务
 │   │   ├── src/
+│   │   │   ├── env.ts             # 环境变量预加载（必须最先导入）
 │   │   │   ├── index.ts            # Express 入口 (端口 3001)
 │   │   │   ├── routes/api.ts       # API 路由 (SSE + REST)
 │   │   │   ├── services/
@@ -50,8 +51,7 @@ blibli-view2text/
 │   │   │   │   ├── ocr-subtitle.ts      # OCR 字幕提取 (tesseract.js)
 │   │   │   │   ├── llm-subtitle.ts      # 大模型字幕提取 (千问 VL)
 │   │   │   │   └── context-store.ts     # 生成上下文存储
-│   │   │   ├── tools/                   # LangChain Tool 定义
-│   │   │   └── agents/                  # Agent 编排
+│   │   │   └── tools/                   # LangChain Tool 定义
 │   │   ├── downloads/              # 持久化产物（视频/字幕/文章）
 │   │   └── .env                    # 环境变量配置
 │   └── web/                        # 前端应用
@@ -74,6 +74,7 @@ blibli-view2text/
 
 - **Node.js** >= 18
 - **通义千问 API Key** — 前往 [阿里云百炼](https://bailian.console.aliyun.com/) 获取 DashScope API Key
+- **ffmpeg**（可选，OCR/大模型提取模式需要）— macOS: `brew install ffmpeg`，Linux: `apt install ffmpeg`
 
 ### 1. 安装依赖
 
@@ -261,6 +262,28 @@ event: error           → { message }                错误
 | `MODEL_BASE_URL` | ✖ | 模型接口地址，默认 DashScope 官方 |
 | `BILIBILI_COOKIE` | ✖ | B站登录 Cookie（也可在页面填写） |
 | `PORT` | ✖ | 服务端口，默认 `3001` |
+
+---
+
+## 云端部署
+
+项目支持打包到服务器后解压即用（零网络依赖）：
+
+```bash
+# 本机打包（含 node_modules）
+tar --exclude='.git' --exclude='downloads' -czf app.tar.gz .
+
+# 上传到服务器
+scp app.tar.gz user@your-server:/home/admin/
+
+# 服务器上解压并启动
+mkdir -p /home/admin/blibli-view2text
+cd /home/admin/blibli-view2text
+tar -xzf ../app.tar.gz
+npm run dev
+```
+
+> 注意：需确保服务器防火墙放行 5173（前端）和 3001（后端）端口。
 
 ---
 
